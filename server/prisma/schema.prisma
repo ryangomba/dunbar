@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native"]
+}
+
+model User {
+  id                         String                  @id @default(uuid())
+  createdAt                  DateTime                @default(now())
+  emailAddress               String                  @unique
+  familyName                 String
+  givenName                  String
+  displayName                String
+  photoURL                   String?
+  googleAccessToken          String
+  googleAccessTokenExpiresAt DateTime
+  googleRefreshToken         String
+  contactsSyncToken          String?
+  calendarEventsSyncToken    String?
+  calendarWebhookChannelInfo Json?
+  notionDatabaseID           String?
+  // Relations
+  contacts                   Contact[]
+  emailAddresses             EmailAddress[]
+  phoneNumbers               PhoneNumber[]
+  addresses                  Address[]
+  calendarEvents             CalendarEvent[]
+  interactions               CalendarEventAttendee[]
+}
+
+enum EmailAddresssType {
+  HOME
+  WORK
+  ALIAS
+  OTHER
+}
+
+model EmailAddress {
+  id        String            @id @default(uuid())
+  createdAt DateTime          @default(now())
+  type      EmailAddresssType
+  value     String
+  // Relations
+  userID    String
+  user      User              @relation(fields: [userID], references: [id], onDelete: Cascade)
+  contactID String
+  contact   Contact           @relation(fields: [contactID], references: [id], onDelete: Cascade)
+}
+
+enum PhoneNumberType {
+  MAIN
+  HOME
+  WORK
+  MOBILE
+  OTHER
+}
+
+model PhoneNumber {
+  id        String          @id @default(uuid())
+  createdAt DateTime        @default(now())
+  type      PhoneNumberType
+  value     String
+  // Relations
+  userID    String
+  user      User            @relation(fields: [userID], references: [id], onDelete: Cascade)
+  contactID String
+  contact   Contact         @relation(fields: [contactID], references: [id], onDelete: Cascade)
+}
+
+enum AddressType {
+  HOME
+  WORK
+  OTHER
+}
+
+model Address {
+  id            String      @id @default(uuid())
+  createdAt     DateTime    @default(now())
+  type          AddressType
+  city          String?
+  country       String?
+  postalCode    String?
+  region        String?
+  streetAddress String?
+  // Relations
+  userID        String
+  user          User        @relation(fields: [userID], references: [id], onDelete: Cascade)
+  contactID     String
+  contact       Contact     @relation(fields: [contactID], references: [id], onDelete: Cascade)
+}
+
+enum ContactAffinity {
+  NEW
+  BEST
+  CLOSE
+  SOLID
+  DISTANT
+  KEEP
+  UNDEFINED
+}
+
+model Contact {
+  id             String                  @id @default(uuid())
+  createdAt      DateTime                @default(now())
+  resourceName   String                  @unique
+  familyName     String?
+  givenName      String?
+  displayName    String
+  photoURL       String?
+  notes          String
+  affinity       ContactAffinity
+  // Relations
+  userID         String
+  user           User                    @relation(fields: [userID], references: [id], onDelete: Cascade)
+  addresses      Address[]
+  phoneNumbers   PhoneNumber[]
+  emailAddresses EmailAddress[]
+  attendence     CalendarEventAttendee[]
+  // Constraints
+
+  @@unique([userID, resourceName])
+}
+
+model CalendarEvent {
+  id          String                  @id @default(uuid())
+  createdAt   DateTime                @default(now())
+  providerID  String
+  title       String
+  description String?
+  start       DateTime
+  end         DateTime
+  // Relations
+  userID      String
+  user        User                    @relation(fields: [userID], references: [id], onDelete: Cascade)
+  attendees   CalendarEventAttendee[]
+  // Constraints
+
+  @@unique([userID, providerID])
+}
+
+model CalendarEventAttendee {
+  id              String        @id @default(uuid())
+  // Relations
+  userID          String
+  user            User          @relation(fields: [userID], references: [id], onDelete: Cascade)
+  calendarEventID String
+  calendarEvent   CalendarEvent @relation(fields: [calendarEventID], references: [id], onDelete: Cascade)
+  contactID       String
+  contact         Contact       @relation(fields: [contactID], references: [id], onDelete: Cascade)
+  // Constraints
+
+  @@unique([calendarEventID, contactID])
+}
